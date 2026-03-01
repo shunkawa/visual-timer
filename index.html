@@ -1,17 +1,16 @@
 <!DOCTYPE html>
-<html lang="ja" data-theme="dark">
+<html lang="ja" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
   <title>ビジュアルタイマー</title>
 
-  <!-- PWA / iOS ホーム画面対応 -->
   <link rel="manifest" href="manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="タイマー" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-  <meta name="theme-color" content="#111827" id="themeColorMeta" />
+  <meta name="theme-color" content="#ffffff" id="themeColorMeta" />
 
   <style>
     *, *::before, *::after {
@@ -20,49 +19,61 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* ── CSS変数でテーマ管理 ── */
     :root {
-      --bg:             #111827;
-      --fg:             #ffffff;
-      --fg-muted:       rgba(255,255,255,0.42);
-      --fg-dim:         rgba(255,255,255,0.22);
-      --h1-color:       #9ca3af;
-      --btn-reset-bg:   rgba(255,255,255,0.10);
-      --btn-reset-fg:   rgba(255,255,255,0.70);
-      --preset-bg:      rgba(255,255,255,0.07);
-      --preset-border:  rgba(255,255,255,0.15);
-      --preset-fg:      rgba(255,255,255,0.75);
-      --theme-btn-bg:   rgba(255,255,255,0.10);
-      --theme-btn-fg:   rgba(255,255,255,0.70);
-      --modal-bg:       rgba(17,24,39,0.96);
-      --modal-border:   rgba(255,255,255,0.12);
-      --input-bg:       rgba(255,255,255,0.08);
-      --input-border:   rgba(255,255,255,0.2);
-      --input-fg:       #ffffff;
-      --cancel-bg:      rgba(255,255,255,0.08);
-      --cancel-fg:      rgba(255,255,255,0.7);
+      --bg:           #ffffff;
+      --surface:      #f5f5f5;
+      --fg:           #1a1a1a;
+      --fg-sub:       #666666;
+      --fg-dim:       #aaaaaa;
+      --border:       #e0e0e0;
+      --pill-bg:      #f0f0f0;
+      --pill-border:  #e0e0e0;
+      --icon-bg:      #f0f0f0;
+      --icon-fg:      #555555;
+      --preset-bg:    #f0f0f0;
+      --preset-fg:    #333333;
+      --preset-border:#e0e0e0;
+      --modal-bg:     #ffffff;
+      --input-bg:     #f5f5f5;
+      --input-border: #d0d0d0;
+      --cancel-bg:    #f0f0f0;
+      --cancel-fg:    #555555;
+      /* canvas colors */
+      --c-empty:      #e8e8e8;
+      --c-ring:       #cccccc;
+      --c-label:      #333333;
+      --c-tick-major: #999999;
+      --c-tick-minor: #cccccc;
+      --c-center:     #333333;
+      --c-edge:       #b30000;
     }
 
-    [data-theme="light"] {
-      --bg:             #f3f4f6;
-      --fg:             #111827;
-      --fg-muted:       rgba(0,0,0,0.50);
-      --fg-dim:         rgba(0,0,0,0.28);
-      --h1-color:       #6b7280;
-      --btn-reset-bg:   rgba(0,0,0,0.08);
-      --btn-reset-fg:   rgba(0,0,0,0.60);
-      --preset-bg:      rgba(0,0,0,0.05);
-      --preset-border:  rgba(0,0,0,0.14);
-      --preset-fg:      rgba(0,0,0,0.65);
-      --theme-btn-bg:   rgba(0,0,0,0.07);
-      --theme-btn-fg:   rgba(0,0,0,0.60);
-      --modal-bg:       rgba(243,244,246,0.98);
-      --modal-border:   rgba(0,0,0,0.12);
-      --input-bg:       rgba(0,0,0,0.05);
-      --input-border:   rgba(0,0,0,0.18);
-      --input-fg:       #111827;
-      --cancel-bg:      rgba(0,0,0,0.06);
-      --cancel-fg:      rgba(0,0,0,0.55);
+    [data-theme="dark"] {
+      --bg:           #111827;
+      --surface:      #1f2937;
+      --fg:           #f3f4f6;
+      --fg-sub:       #9ca3af;
+      --fg-dim:       #4b5563;
+      --border:       #374151;
+      --pill-bg:      #1f2937;
+      --pill-border:  #374151;
+      --icon-bg:      #1f2937;
+      --icon-fg:      #9ca3af;
+      --preset-bg:    #1f2937;
+      --preset-fg:    #d1d5db;
+      --preset-border:#374151;
+      --modal-bg:     #1f2937;
+      --input-bg:     #111827;
+      --input-border: #374151;
+      --cancel-bg:    #374151;
+      --cancel-fg:    #9ca3af;
+      --c-empty:      #2d3748;
+      --c-ring:       #374151;
+      --c-label:      #9ca3af;
+      --c-tick-major: #6b7280;
+      --c-tick-minor: #374151;
+      --c-center:     #9ca3af;
+      --c-edge:       #ff6b6b;
     }
 
     body {
@@ -78,171 +89,185 @@
       color: var(--fg);
       overflow: hidden;
       user-select: none;
-      transition: background .3s, color .3s;
+      transition: background .25s, color .25s;
     }
 
-    /* ── Theme button (top-right) ── */
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 0 20px;
+      margin-bottom: clamp(12px, 2.5vh, 28px);
+      position: relative;
+    }
+
+    .header-title {
+      font-size: clamp(13px, 2.5vw, 16px);
+      font-weight: 600;
+      letter-spacing: 3px;
+      color: var(--fg-sub);
+      text-transform: uppercase;
+      transition: color .25s;
+    }
+
     #themeBtn {
-      position: fixed;
-      top: max(16px, env(safe-area-inset-top, 16px));
-      right: 18px;
-      width: 44px; height: 44px;
+      position: absolute;
+      right: 20px;
+      width: 38px; height: 38px;
       border-radius: 50%;
-      border: none;
-      background: var(--theme-btn-bg);
-      color: var(--theme-btn-fg);
-      font-size: 20px;
+      border: 1px solid var(--border);
+      background: var(--icon-bg);
+      color: var(--icon-fg);
+      font-size: 17px;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      transition: background .2s, transform .1s;
-      z-index: 10;
+      transition: background .2s, border-color .2s, transform .1s;
     }
     #themeBtn:active { transform: scale(.9); }
 
-    h1 {
-      font-size: clamp(16px, 3vw, 24px);
-      font-weight: 300;
-      letter-spacing: 6px;
-      color: var(--h1-color);
-      text-transform: uppercase;
-      margin-bottom: clamp(20px, 3.5vh, 44px);
-      transition: color .3s;
-    }
-
-    /* ── Timer ── */
+    /* ── Timer canvas wrap ── */
     .timer-wrap {
       position: relative;
-      width: min(340px, 82vw);
-      height: min(340px, 82vw);
+      width: min(320px, 80vw);
+      height: min(320px, 80vw);
       cursor: crosshair;
       touch-action: none;
     }
 
     #c { width: 100%; height: 100%; display: block; }
 
-    .overlay-time {
+    /* 中央の直接入力ボタン（中心ドットの上に重ねる） */
+    .center-btn-wrap {
       position: absolute;
       inset: 0;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      pointer-events: none; /* キャンバスへのドラッグを通す */
+      pointer-events: none;
     }
 
-    /* タップ可能エリア（停止中のみ） */
-    #timeEditBtn {
-      background: transparent;
+    #centerEditBtn {
+      width: 36px; height: 36px;
+      border-radius: 50%;
       border: none;
+      background: transparent;
       cursor: pointer;
+      pointer-events: auto;
+      transition: background .15s;
+    }
+    #centerEditBtn:not([disabled]):active {
+      background: rgba(128,128,128,0.15);
+    }
+    #centerEditBtn[disabled] { pointer-events: none; }
+
+    /* ── Time pill ── */
+    .time-pill-wrap {
+      margin-top: clamp(14px, 2.5vh, 24px);
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 12px 20px;
-      border-radius: 16px;
-      transition: background .15s;
-      pointer-events: auto; /* ボタン自体はタップを受け取る */
+      gap: 4px;
     }
-    #timeEditBtn:not([disabled]):active {
-      background: rgba(128,128,128,0.12);
-    }
-    #timeEditBtn[disabled] { cursor: default; pointer-events: none; }
 
-    .time-big {
-      font-size: clamp(40px, 11vw, 62px);
-      font-weight: 200;
-      letter-spacing: 3px;
-      line-height: 1;
+    #timePill {
+      background: var(--pill-bg);
+      border: 1.5px solid var(--pill-border);
+      border-radius: 50px;
+      padding: 8px 28px;
+      font-size: clamp(26px, 7vw, 38px);
+      font-weight: 300;
+      letter-spacing: 4px;
       color: var(--fg);
-      text-shadow: 0 2px 16px rgba(0,0,0,.25);
-      transition: color .3s;
+      cursor: pointer;
+      transition: background .2s, border-color .2s, color .25s, transform .1s;
     }
+    #timePill:not([disabled]):active {
+      transform: scale(.97);
+      background: var(--border);
+    }
+    #timePill[disabled] { cursor: default; pointer-events: none; }
+
     .time-sub {
-      margin-top: 6px;
-      font-size: clamp(11px, 2.2vw, 13px);
-      color: var(--fg-muted);
-      letter-spacing: 2px;
-      transition: color .3s;
-    }
-    /* 編集ヒント（停止中に薄く表示） */
-    .edit-hint {
-      margin-top: 4px;
       font-size: 11px;
       color: var(--fg-dim);
-      letter-spacing: 1px;
-      transition: opacity .2s, color .3s;
+      letter-spacing: 2px;
+      transition: color .25s;
     }
-    .running .edit-hint { opacity: 0; }
 
-    /* ── Presets ── */
+    /* ── Preset row ── */
     .presets {
       display: flex;
-      gap: 10px;
-      margin-top: clamp(16px, 2.8vh, 32px);
+      gap: 8px;
+      margin-top: clamp(12px, 2vh, 20px);
       flex-wrap: wrap;
       justify-content: center;
-      padding: 0 12px;
+      padding: 0 16px;
     }
 
     .preset-btn {
-      padding: 8px 18px;
+      padding: 7px 16px;
       border-radius: 20px;
       border: 1px solid var(--preset-border);
       background: var(--preset-bg);
       color: var(--preset-fg);
-      font-size: clamp(12px, 2.4vw, 14px);
-      letter-spacing: 1px;
+      font-size: clamp(12px, 2.2vw, 13px);
+      font-weight: 500;
+      letter-spacing: .5px;
       cursor: pointer;
-      transition: background .15s, transform .1s, color .3s, border-color .3s;
+      transition: background .15s, transform .1s;
     }
-    .preset-btn:active { transform: scale(.92); }
+    .preset-btn:active { transform: scale(.93); }
 
-    /* ── Controls ── */
-    .controls {
-      display: flex;
-      align-items: center;
-      gap: 22px;
-      margin-top: clamp(16px, 2.8vh, 32px);
+    /* ── Main play button ── */
+    .play-wrap {
+      margin-top: clamp(14px, 2.5vh, 22px);
     }
 
-    .ctrl-btn {
-      border: none; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 50%;
-      transition: transform .15s;
-    }
-    .ctrl-btn:active { transform: scale(.9); }
-
-    #resetBtn {
-      width: 56px; height: 56px;
-      background: var(--btn-reset-bg);
-      font-size: 22px;
-      color: var(--btn-reset-fg);
-      transition: background .3s, color .3s;
-    }
     #playBtn {
-      width: 80px; height: 80px;
-      background: linear-gradient(145deg, #ef4444, #b91c1c);
-      box-shadow: 0 8px 28px rgba(239,68,68,.45);
-      font-size: 30px;
+      width: 68px; height: 68px;
+      border-radius: 50%;
+      border: none;
+      background: #cc0000;
       color: #fff;
+      font-size: 26px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 18px rgba(204,0,0,.35);
+      transition: transform .1s, box-shadow .1s;
+    }
+    #playBtn:active {
+      transform: scale(.93);
+      box-shadow: 0 2px 8px rgba(204,0,0,.25);
     }
 
-    .hint {
-      margin-top: clamp(14px, 2.2vh, 24px);
-      font-size: 12px;
-      color: var(--fg-dim);
-      letter-spacing: 1.5px;
-      text-align: center;
-      padding: 0 16px;
-      transition: color .3s;
+    /* ── Bottom icon bar ── */
+    .icon-bar {
+      display: flex;
+      gap: 20px;
+      margin-top: clamp(14px, 2.5vh, 22px);
+      align-items: center;
     }
+
+    .icon-btn {
+      width: 46px; height: 46px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--icon-bg);
+      color: var(--icon-fg);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s, transform .1s, border-color .25s;
+    }
+    .icon-btn:active { transform: scale(.9); }
 
     /* ── 直接入力モーダル ── */
     #inputModal {
       display: none;
       position: fixed; inset: 0;
-      background: rgba(0,0,0,0.45);
+      background: rgba(0,0,0,0.4);
       align-items: center; justify-content: center;
       z-index: 50;
       backdrop-filter: blur(4px);
@@ -251,62 +276,61 @@
 
     .modal-box {
       background: var(--modal-bg);
-      border: 1px solid var(--modal-border);
-      border-radius: 24px;
-      padding: 32px 36px;
-      width: min(320px, 88vw);
+      border-radius: 20px;
+      padding: 28px 32px;
+      width: min(300px, 86vw);
       text-align: center;
-      box-shadow: 0 24px 60px rgba(0,0,0,.35);
-      transition: background .3s, border-color .3s;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25);
+      transition: background .25s;
     }
 
     .modal-title {
-      font-size: 16px;
-      font-weight: 500;
+      font-size: 14px;
+      font-weight: 600;
       letter-spacing: 2px;
-      color: var(--fg);
-      margin-bottom: 20px;
-      transition: color .3s;
+      color: var(--fg-sub);
+      text-transform: uppercase;
+      margin-bottom: 18px;
     }
 
     .input-row {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 12px;
-      margin-bottom: 8px;
+      gap: 10px;
+      margin-bottom: 6px;
     }
 
     .num-input {
-      width: 90px;
-      padding: 12px 10px;
-      font-size: 32px;
+      width: 84px;
+      padding: 10px 8px;
+      font-size: 30px;
       font-weight: 200;
       text-align: center;
       background: var(--input-bg);
-      border: 1px solid var(--input-border);
-      border-radius: 14px;
-      color: var(--input-fg);
+      border: 1.5px solid var(--input-border);
+      border-radius: 12px;
+      color: var(--fg);
       outline: none;
-      transition: background .3s, border-color .3s, color .3s;
       -webkit-appearance: none;
+      transition: border-color .15s;
     }
-    .num-input:focus { border-color: #ef4444; }
+    .num-input:focus { border-color: #cc0000; }
 
     .input-sep {
       font-size: 28px;
       font-weight: 200;
-      color: var(--fg-muted);
+      color: var(--fg-sub);
     }
 
     .input-labels {
       display: flex;
       justify-content: center;
-      gap: 12px;
-      margin-bottom: 20px;
+      gap: 10px;
+      margin-bottom: 18px;
     }
     .input-label {
-      width: 90px;
+      width: 84px;
       font-size: 11px;
       color: var(--fg-dim);
       letter-spacing: 1px;
@@ -315,31 +339,24 @@
 
     .modal-actions {
       display: flex;
-      gap: 12px;
+      gap: 10px;
     }
 
     .modal-cancel {
-      flex: 1;
-      padding: 12px;
-      border-radius: 12px;
-      border: none;
+      flex: 1; padding: 11px;
+      border-radius: 10px; border: none;
       background: var(--cancel-bg);
       color: var(--cancel-fg);
-      font-size: 15px;
-      cursor: pointer;
-      transition: background .15s, transform .1s;
+      font-size: 15px; cursor: pointer;
+      transition: transform .1s;
     }
     .modal-cancel:active { transform: scale(.95); }
 
     .modal-ok {
-      flex: 1;
-      padding: 12px;
-      border-radius: 12px;
-      border: none;
-      background: #ef4444;
-      color: #fff;
-      font-size: 15px;
-      font-weight: 600;
+      flex: 1; padding: 11px;
+      border-radius: 10px; border: none;
+      background: #cc0000; color: #fff;
+      font-size: 15px; font-weight: 600;
       cursor: pointer;
       transition: transform .1s;
     }
@@ -349,97 +366,101 @@
     #alarmOverlay {
       display: none;
       position: fixed; inset: 0;
-      background: rgba(239,68,68,.18);
+      background: rgba(204,0,0,.15);
       align-items: center; justify-content: center;
-      animation: flashBg .85s ease-in-out infinite;
+      animation: flashBg .9s ease-in-out infinite;
       z-index: 100;
     }
     #alarmOverlay.show { display: flex; }
 
     @keyframes flashBg {
-      0%,100% { background: rgba(239,68,68,.10); }
-      50%      { background: rgba(239,68,68,.32); }
+      0%,100% { background: rgba(204,0,0,.08); }
+      50%      { background: rgba(204,0,0,.28); }
     }
 
     .alarm-box {
       text-align: center;
-      padding: 44px 52px;
+      padding: 40px 48px;
       background: var(--modal-bg);
-      border-radius: 28px;
-      border: 1px solid rgba(239,68,68,.4);
-      backdrop-filter: blur(20px);
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
       margin: 0 24px;
     }
 
-    .alarm-icon { font-size: 68px; animation: bounce .75s ease-in-out infinite; }
+    .alarm-icon { font-size: 64px; animation: bounce .8s ease-in-out infinite; }
     @keyframes bounce {
       0%,100% { transform: translateY(0); }
-      50%      { transform: translateY(-10px); }
+      50%      { transform: translateY(-8px); }
     }
 
     .alarm-msg {
-      margin-top: 14px;
-      font-size: 26px;
-      font-weight: 300;
+      margin-top: 12px;
+      font-size: 24px; font-weight: 300;
       letter-spacing: 3px;
       color: var(--fg);
     }
 
     #stopBtn {
-      margin-top: 28px;
-      padding: 14px 44px;
-      border-radius: 30px;
-      border: none;
-      background: #ef4444;
-      color: #fff;
-      font-size: 18px;
-      font-weight: 600;
-      cursor: pointer;
-      letter-spacing: 1px;
+      margin-top: 24px;
+      padding: 13px 40px;
+      border-radius: 28px; border: none;
+      background: #cc0000; color: #fff;
+      font-size: 17px; font-weight: 600;
+      cursor: pointer; letter-spacing: .5px;
     }
     #stopBtn:active { transform: scale(.94); }
   </style>
 </head>
 <body>
 
-<!-- テーマ切替ボタン -->
-<button id="themeBtn" onclick="toggleTheme()" title="テーマ切替">🌙</button>
+<!-- Header -->
+<div class="header">
+  <div class="header-title" id="headerTitle">タイマー</div>
+  <button id="themeBtn" onclick="toggleTheme()">🌙</button>
+</div>
 
-<h1>タイマー</h1>
-
+<!-- Timer -->
 <div class="timer-wrap" id="timerWrap">
   <canvas id="c"></canvas>
-  <div class="overlay-time">
-    <button id="timeEditBtn" onclick="openInput()" title="時間を直接入力">
-      <div class="time-big" id="timeBig">00:00</div>
-      <div class="time-sub" id="timeSub">円をドラッグして設定</div>
-      <div class="edit-hint" id="editHint">タップして入力</div>
-    </button>
+  <div class="center-btn-wrap">
+    <button id="centerEditBtn" onclick="openInput()" title="時間を直接入力"></button>
   </div>
 </div>
 
+<!-- Time pill（タップで直接入力） -->
+<div class="time-pill-wrap">
+  <button id="timePill" onclick="openInput()">00 : 00</button>
+  <div class="time-sub" id="timeSub">タップして入力 または 円をドラッグ</div>
+</div>
+
+<!-- Presets -->
 <div class="presets">
   <button class="preset-btn" onclick="setPreset(1)">1分</button>
   <button class="preset-btn" onclick="setPreset(5)">5分</button>
   <button class="preset-btn" onclick="setPreset(10)">10分</button>
   <button class="preset-btn" onclick="setPreset(25)">25分</button>
+  <button class="preset-btn" onclick="setPreset(45)">45分</button>
 </div>
 
-<div class="controls">
-  <button class="ctrl-btn" id="resetBtn" onclick="resetTimer()">↺</button>
-  <button class="ctrl-btn" id="playBtn" onclick="togglePlay()">▶</button>
+<!-- Play button -->
+<div class="play-wrap">
+  <button id="playBtn" onclick="togglePlay()">▶</button>
 </div>
 
-<p class="hint" id="hint">円をドラッグ・タップして残り時間を設定</p>
+<!-- Icon bar -->
+<div class="icon-bar">
+  <button class="icon-btn" onclick="resetTimer()" title="リセット">↺</button>
+  <button class="icon-btn" id="soundBtn" onclick="toggleSound()" title="音切替">🔔</button>
+</div>
 
 <!-- 直接入力モーダル -->
 <div id="inputModal">
   <div class="modal-box">
     <div class="modal-title">時間を入力</div>
     <div class="input-row">
-      <input class="num-input" id="minInput"  type="number" min="0" max="60" placeholder="00" inputmode="numeric" />
+      <input class="num-input" id="minInput" type="number" min="0" max="60" placeholder="00" inputmode="numeric" />
       <span class="input-sep">:</span>
-      <input class="num-input" id="secInput"  type="number" min="0" max="59" placeholder="00" inputmode="numeric" />
+      <input class="num-input" id="secInput" type="number" min="0" max="59" placeholder="00" inputmode="numeric" />
     </div>
     <div class="input-labels">
       <div class="input-label">分</div>
@@ -453,7 +474,7 @@
   </div>
 </div>
 
-<!-- アラーム -->
+<!-- Alarm -->
 <div id="alarmOverlay">
   <div class="alarm-box">
     <div class="alarm-icon">⏰</div>
@@ -463,7 +484,6 @@
 </div>
 
 <script>
-/* ── Service Worker ── */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () =>
     navigator.serviceWorker.register('./sw.js').catch(() => {})
@@ -476,29 +496,31 @@ if ('serviceWorker' in navigator) {
   let running = false, timer = null;
   let dragging = false;
   let audioCtx = null, alarmTimer = null;
-  let isLight = false;
-
-  /* ── Theme init (localStorage) ── */
-  const savedTheme = localStorage.getItem('timer-theme');
-  if (savedTheme === 'light') applyTheme(true, false);
+  let soundOn = true;
+  let isLight = true;
 
   function applyTheme(light, save = true) {
     isLight = light;
     document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
     document.getElementById('themeBtn').textContent = light ? '🌙' : '☀️';
-    document.getElementById('themeColorMeta').content = light ? '#f3f4f6' : '#111827';
+    document.getElementById('themeColorMeta').content = light ? '#ffffff' : '#111827';
     if (save) localStorage.setItem('timer-theme', light ? 'light' : 'dark');
     draw();
   }
-
   window.toggleTheme = () => applyTheme(!isLight);
+
+  /* ── Sound toggle ── */
+  window.toggleSound = () => {
+    soundOn = !soundOn;
+    document.getElementById('soundBtn').textContent = soundOn ? '🔔' : '🔕';
+  };
 
   /* ── Canvas ── */
   const wrap   = document.getElementById('timerWrap');
   const canvas = document.getElementById('c');
   const ctx    = canvas.getContext('2d');
   let DPR = window.devicePixelRatio || 1;
-  let SIZE = 340;
+  let SIZE = 320;
 
   function initCanvas() {
     const rect = wrap.getBoundingClientRect();
@@ -508,126 +530,125 @@ if ('serviceWorker' in navigator) {
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   }
 
-  /* ── Draw ── */
+  /* ── Draw（TimeTimerスタイル）── */
   function draw() {
     const s = SIZE, cx = s/2, cy = s/2;
-    const R = s * 0.46, r = s * 0.26;
+    /* 数字ラベルを外側に置くため、円は少し内側に */
+    const R      = s * 0.38;   /* 円の半径 */
+    const R_tick = R + s*0.01; /* 目盛り外端 */
+    const R_num  = R + s*0.08; /* 数字位置 */
+
     ctx.clearRect(0, 0, s, s);
 
-    /* テーマカラー */
-    const bgColor     = isLight ? '#f3f4f6' : '#111827';
-    const trackFill   = isLight ? 'rgba(0,0,0,0.04)'    : 'rgba(255,255,255,0.04)';
-    const trackStroke = isLight ? 'rgba(0,0,0,0.10)'    : 'rgba(255,255,255,0.08)';
-    const tickMajor   = isLight ? 'rgba(0,0,0,0.38)'    : 'rgba(255,255,255,0.38)';
-    const tickMinor   = isLight ? 'rgba(0,0,0,0.14)'    : 'rgba(255,255,255,0.12)';
-    const labelColor  = isLight ? 'rgba(0,0,0,0.35)'    : 'rgba(255,255,255,0.32)';
-    const markerColor = isLight ? 'rgba(0,0,0,0.45)'    : 'rgba(255,255,255,0.55)';
-    const edgeColor   = isLight ? 'rgba(80,80,80,0.9)'  : '#ffffff';
+    /* テーマカラー（isLight で直接定義） */
+    const cEmpty   = isLight ? '#e8e8e8' : '#2d3748';
+    const cRing    = isLight ? '#cccccc' : '#374151';
+    const cLabel   = isLight ? '#333333' : '#9ca3af';
+    const cTickMaj = isLight ? '#999999' : '#6b7280';
+    const cTickMin = isLight ? '#cccccc' : '#374151';
 
-    /* Track */
+    /* ── 空き部分（全円・薄グレー）── */
     ctx.beginPath();
     ctx.arc(cx, cy, R, 0, Math.PI*2);
-    ctx.fillStyle = trackFill;
+    ctx.fillStyle = cEmpty;
     ctx.fill();
-    ctx.strokeStyle = trackStroke;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
 
-    /* Ticks */
-    for (let i = 0; i < 60; i++) {
-      const a = (i/60)*Math.PI*2 - Math.PI/2;
-      const major = i % 5 === 0;
-      const inner = major ? R - s*0.05 : R - s*0.03;
-      ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(a)*inner, cy + Math.sin(a)*inner);
-      ctx.lineTo(cx + Math.cos(a)*(R-2), cy + Math.sin(a)*(R-2));
-      ctx.strokeStyle = major ? tickMajor : tickMinor;
-      ctx.lineWidth = major ? 2 : 1;
-      ctx.stroke();
-    }
-
-    /* Labels */
-    ctx.save();
-    ctx.font = `${s*0.038}px -apple-system, sans-serif`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = labelColor;
-    [15,30,45,60].forEach(m => {
-      const a = (m/60)*Math.PI*2 - Math.PI/2;
-      ctx.fillText(String(m), cx + Math.cos(a)*(R - s*0.11), cy + Math.sin(a)*(R - s*0.11));
-    });
-    ctx.restore();
-
-    /* Sector */
+    /* ── 赤い扇形（残り時間）── */
     const frac   = totalSec > 0 ? remSec / totalSec : 0;
     const startA = -Math.PI / 2;
     const endA   = startA + frac * Math.PI * 2;
 
-    if (frac > 0.001) {
-      const grad = ctx.createRadialGradient(cx, cy, r, cx, cy, R);
-      grad.addColorStop(0, '#ff8080');
-      grad.addColorStop(1, '#dc2626');
+    if (frac > 0.002) {
       ctx.beginPath();
       ctx.moveTo(cx, cy);
-      ctx.arc(cx, cy, R-2, startA, endA);
+      ctx.arc(cx, cy, R, startA, endA);
       ctx.closePath();
-      ctx.fillStyle = grad;
+      ctx.fillStyle = '#cc0000';
       ctx.fill();
+    }
 
-      /* Glow */
-      ctx.beginPath();
-      ctx.arc(cx + Math.cos(endA)*(R-2-(R-r)/2),
-              cy + Math.sin(endA)*(R-2-(R-r)/2),
-              (R-r)/2, 0, Math.PI*2);
-      ctx.fillStyle = 'rgba(255,100,100,0.32)';
-      ctx.fill();
+    /* ── 外周リング ── */
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI*2);
+    ctx.strokeStyle = cRing;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
 
-      /* Edge line */
+    /* ── 目盛り（外周）── */
+    for (let i = 0; i < 60; i++) {
+      const a     = (i/60)*Math.PI*2 - Math.PI/2;
+      const major = i % 5 === 0;
+      const len   = major ? s*0.04 : s*0.02;
       ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(endA)*(r+2), cy + Math.sin(endA)*(r+2));
-      ctx.lineTo(cx + Math.cos(endA)*(R-2), cy + Math.sin(endA)*(R-2));
-      ctx.strokeStyle = edgeColor; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.moveTo(cx + Math.cos(a)*R,         cy + Math.sin(a)*R);
+      ctx.lineTo(cx + Math.cos(a)*(R+len),   cy + Math.sin(a)*(R+len));
+      ctx.strokeStyle = major ? cTickMaj : cTickMin;
+      ctx.lineWidth   = major ? 1.8 : 1;
       ctx.stroke();
     }
 
-    /* Donut hole */
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI*2);
-    ctx.fillStyle = bgColor;
-    ctx.fill();
+    /* ── 数字ラベル（0, 5, 10 ... 55）── */
+    ctx.save();
+    ctx.font        = `500 ${s*0.042}px -apple-system, sans-serif`;
+    ctx.textAlign   = 'center';
+    ctx.textBaseline= 'middle';
+    ctx.fillStyle   = cLabel;
+    for (let m = 0; m < 60; m += 5) {
+      const a  = (m/60)*Math.PI*2 - Math.PI/2;
+      const lx = cx + Math.cos(a)*R_num;
+      const ly = cy + Math.sin(a)*R_num;
+      ctx.fillText(String(m), lx, ly);
+    }
+    ctx.restore();
 
-    /* 12-o'clock marker */
+    /* ── 12時の境界線 ── */
     ctx.beginPath();
-    ctx.moveTo(cx, cy-r); ctx.lineTo(cx, cy-R);
-    ctx.strokeStyle = markerColor; ctx.lineWidth = 2.5;
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx, cy - R);
+    ctx.strokeStyle = isLight ? 'rgba(255,255,255,0.9)' : 'rgba(17,24,39,0.9)';
+    ctx.lineWidth = 2;
     ctx.stroke();
 
-    /* Center dot */
+    /* ── 中心ドット ── */
     ctx.beginPath();
-    ctx.arc(cx, cy, 5, 0, Math.PI*2);
-    ctx.fillStyle = isLight ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.4)';
+    ctx.arc(cx, cy, s*0.028, 0, Math.PI*2);
+    ctx.fillStyle = isLight ? '#333333' : '#9ca3af';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, s*0.012, 0, Math.PI*2);
+    ctx.fillStyle = isLight ? '#ffffff' : '#111827';
     ctx.fill();
   }
 
-  /* ── Display ── */
+  /* ── Time pill 更新 ── */
   function updateDisplay() {
     const m = Math.floor(remSec/60), s = remSec%60;
-    document.getElementById('timeBig').textContent =
-      `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    document.getElementById('timePill').textContent =
+      `${String(m).padStart(2,'0')} : ${String(s).padStart(2,'0')}`;
+
     const sub = document.getElementById('timeSub');
-    if (!running && remSec===0 && totalSec===0) sub.textContent = '円をドラッグして設定';
+    if (!running && remSec===0 && totalSec===0) sub.textContent = 'タップして入力 または 円をドラッグ';
     else if (running)                           sub.textContent = '実行中';
     else sub.textContent = remSec===totalSec    ? '準備完了' : '一時停止中';
 
-    /* 実行中は編集ボタン無効 */
-    document.getElementById('timeEditBtn').disabled = running;
-    document.querySelector('.overlay-time').classList.toggle('running', running);
+    /* タイトルに残り時間を表示 */
+    if (running || (remSec>0 && remSec<totalSec)) {
+      document.getElementById('headerTitle').textContent =
+        `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')} タイマー`;
+    } else {
+      document.getElementById('headerTitle').textContent = 'タイマー';
+    }
+
+    const disabled = running;
+    document.getElementById('timePill').disabled      = disabled;
+    document.getElementById('centerEditBtn').disabled = disabled;
   }
 
-  /* ── Angle → Time ── */
-  function angleFromXY(cx2, cy2) {
+  /* ── Drag ── */
+  function angleFromXY(clientX, clientY) {
     const rect = canvas.getBoundingClientRect();
-    const px = cx2 - rect.left - rect.width/2;
-    const py = cy2 - rect.top  - rect.height/2;
+    const px = clientX - rect.left - rect.width/2;
+    const py = clientY - rect.top  - rect.height/2;
     let a = Math.atan2(py, px) + Math.PI/2;
     if (a < 0) a += Math.PI*2;
     return a;
@@ -635,24 +656,20 @@ if ('serviceWorker' in navigator) {
   function setFromAngle(a) {
     const mins = Math.round((a/(Math.PI*2))*60);
     totalSec = Math.min(Math.max(mins,0),60)*60;
-    remSec = totalSec;
+    remSec   = totalSec;
     updateDisplay(); draw();
   }
 
-  /* ── Pointer ── */
   function onDown(e) {
     if (running) return;
-    /* 中央の編集ボタン領域ならスキップ（クリックイベントに任せる）*/
+    /* 中心ドット付近（半径7%以内）はボタンに任せる */
     const rect = canvas.getBoundingClientRect();
     const t = e.touches ? e.touches[0] : e;
     const dx = t.clientX - rect.left - rect.width/2;
     const dy = t.clientY - rect.top  - rect.height/2;
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    const r = rect.width * 0.26;
-    if (dist < r) return; /* 内円タップは入力モーダルへ */
+    if (Math.sqrt(dx*dx+dy*dy) < rect.width*0.07) return;
     dragging = true;
     setFromAngle(angleFromXY(t.clientX, t.clientY));
-    document.getElementById('hint').style.display = 'none';
   }
   function onMove(e) {
     if (!dragging || running) return;
@@ -669,48 +686,33 @@ if ('serviceWorker' in navigator) {
   canvas.addEventListener('touchmove',  onMove, {passive:false});
   canvas.addEventListener('touchend',   onUp);
 
-  /* ── 直接入力モーダル ── */
+  /* ── 直接入力 ── */
   window.openInput = () => {
     if (running) return;
-    const m = Math.floor(remSec/60);
-    const s = remSec % 60;
+    const m = Math.floor(remSec/60), s = remSec%60;
     document.getElementById('minInput').value = m || '';
     document.getElementById('secInput').value = s || '';
     document.getElementById('inputModal').classList.add('show');
-    /* フォーカスを少し遅らせる（iOS キーボード対応）*/
     setTimeout(() => document.getElementById('minInput').focus(), 80);
   };
-
-  window.closeInput = () => {
-    document.getElementById('inputModal').classList.remove('show');
-  };
-
+  window.closeInput = () => document.getElementById('inputModal').classList.remove('show');
   window.confirmInput = () => {
-    const m = parseInt(document.getElementById('minInput').value) || 0;
-    const s = parseInt(document.getElementById('secInput').value) || 0;
-    const total = Math.min(m, 60) * 60 + Math.min(s, 59);
-    if (total > 0) {
-      totalSec = total; remSec = total;
-      document.getElementById('hint').style.display = 'none';
-      updateDisplay(); draw();
-    }
+    const m = Math.min(parseInt(document.getElementById('minInput').value)||0, 60);
+    const s = Math.min(parseInt(document.getElementById('secInput').value)||0, 59);
+    const total = m*60 + s;
+    if (total > 0) { totalSec = total; remSec = total; updateDisplay(); draw(); }
     closeInput();
   };
-
-  /* Enterキーで確定 */
   document.getElementById('minInput').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('secInput').focus(); });
   document.getElementById('secInput').addEventListener('keydown', e => { if (e.key==='Enter') window.confirmInput(); });
-
-  /* モーダル背景タップで閉じる */
   document.getElementById('inputModal').addEventListener('click', e => {
-    if (e.target === document.getElementById('inputModal')) closeInput();
+    if (e.target===document.getElementById('inputModal')) closeInput();
   });
 
   /* ── Preset ── */
   window.setPreset = min => {
     if (running) return;
     totalSec = min*60; remSec = totalSec;
-    document.getElementById('hint').style.display = 'none';
     updateDisplay(); draw();
   };
 
@@ -742,7 +744,6 @@ if ('serviceWorker' in navigator) {
     clearInterval(timer); running = false;
     totalSec = 0; remSec = 0;
     document.getElementById('playBtn').textContent = '▶';
-    document.getElementById('hint').style.display = '';
     updateDisplay(); draw();
   };
 
@@ -762,6 +763,7 @@ if ('serviceWorker' in navigator) {
     osc.start(t); osc.stop(t+dur+0.05);
   }
   function playAlarm() {
+    if (!soundOn) return;
     beep(880,0.18,0.6,0); beep(1100,0.18,0.6,0.22);
     beep(880,0.18,0.6,0.44); beep(1320,0.35,0.6,0.68);
   }
@@ -777,7 +779,13 @@ if ('serviceWorker' in navigator) {
   };
 
   window.addEventListener('resize', () => { initCanvas(); draw(); });
-  initCanvas(); draw(); updateDisplay();
+
+  /* 初期化順序：canvas確定 → テーマ適用（内部でdraw）→ 表示更新 */
+  initCanvas();
+  const savedTheme = localStorage.getItem('timer-theme');
+  if (savedTheme === 'dark') applyTheme(false, false);
+  else applyTheme(true, false);
+  updateDisplay();
 })();
 </script>
 </body>
