@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>ビジュアルタイマー</title>
+
+  <!-- PWA / iOS ホーム画面対応 -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="タイマー" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <meta name="theme-color" content="#111827" />
+
+  <style>
+    *, *::before, *::after {
+      margin: 0; padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: #111827;
+      /* iOS safe area (ノッチ・ホームバー対応) */
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Segoe UI', sans-serif;
+      color: #fff;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    h1 {
+      font-size: clamp(16px, 3vw, 24px);
+      font-weight: 300;
+      letter-spacing: 6px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      margin-bottom: clamp(20px, 3.5vh, 44px);
+    }
+
+    /* ── Timer ── */
+    .timer-wrap {
+      position: relative;
+      width: min(340px, 82vw);
+      height: min(340px, 82vw);
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    #c { width: 100%; height: 100%; display: block; }
+
+    .overlay-time {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .time-big {
+      font-size: clamp(40px, 11vw, 62px);
+      font-weight: 200;
+      letter-spacing: 3px;
+      line-height: 1;
+      text-shadow: 0 2px 16px rgba(0,0,0,.6);
+    }
+
+    .time-sub {
+      margin-top: 6px;
+      font-size: clamp(11px, 2.2vw, 13px);
+      color: rgba(255,255,255,.4);
+      letter-spacing: 2px;
+    }
+
+    /* ── Presets ── */
+    .presets {
+      display: flex;
+      gap: 10px;
+      margin-top: clamp(16px, 2.8vh, 32px);
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 0 12px;
+    }
+
+    .preset-btn {
+      padding: 8px 18px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.15);
+      background: rgba(255,255,255,.07);
+      color: rgba(255,255,255,.75);
+      font-size: clamp(12px, 2.4vw, 14px);
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+      backdrop-filter: blur(6px);
+    }
+    .preset-btn:active { transform: scale(.92); background: rgba(255,255,255,.16); }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      margin-top: clamp(16px, 2.8vh, 32px);
+    }
+
+    .ctrl-btn {
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: transform .15s;
+    }
+    .ctrl-btn:active { transform: scale(.9); }
+
+    #resetBtn {
+      width: 56px; height: 56px;
+      background: rgba(255,255,255,.1);
+      font-size: 22px;
+      color: rgba(255,255,255,.7);
+    }
+
+    #playBtn {
+      width: 80px; height: 80px;
+      background: linear-gradient(145deg, #ef4444, #b91c1c);
+      box-shadow: 0 8px 28px rgba(239,68,68,.45);
+      font-size: 30px;
+      color: #fff;
+    }
+
+    .hint {
+      margin-top: clamp(14px, 2.2vh, 24px);
+      font-size: 12px;
+      color: rgba(255,255,255,.22);
+      letter-spacing: 1.5px;
+      text-align: center;
+      padding: 0 16px;
+    }
+
+    /* ── Alarm ── */
+    #alarmOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(239,68,68,.18);
+      align-items: center;
+      justify-content: center;
+      animation: flashBg 0.85s ease-in-out infinite;
+      z-index: 100;
+    }
+    #alarmOverlay.show { display: flex; }
+
+    @keyframes flashBg {
+      0%,100% { background: rgba(239,68,68,.1); }
+      50%      { background: rgba(239,68,68,.32); }
+    }
+
+    .alarm-box {
+      text-align: center;
+      padding: 44px 52px;
+      background: rgba(17,24,39,.9);
+      border-radius: 28px;
+      border: 1px solid rgba(239,68,68,.4);
+      backdrop-filter: blur(20px);
+      margin: 0 24px;
+    }
+
+    .alarm-icon {
+      font-size: 68px;
+      animation: bounce .75s ease-in-out infinite;
+    }
+    @keyframes bounce {
+      0%,100% { transform: translateY(0); }
+      50%      { transform: translateY(-10px); }
+    }
+
+    .alarm-msg {
+      margin-top: 14px;
+      font-size: 26px;
+      font-weight: 300;
+      letter-spacing: 3px;
+    }
+
+    #stopBtn {
+      margin-top: 28px;
+      padding: 14px 44px;
+      border-radius: 30px;
+      border: none;
+      background: #ef4444;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 1px;
+    }
+    #stopBtn:active { transform: scale(.94); }
+  </style>
+</head>
+<body>
+
+<h1>タイマー</h1>
+
+<div class="timer-wrap" id="timerWrap">
+  <canvas id="c"></canvas>
+  <div class="overlay-time">
+    <div class="time-big" id="timeBig">00:00</div>
+    <div class="time-sub" id="timeSub">円をドラッグして設定</div>
+  </div>
+</div>
+
+<div class="presets">
+  <button class="preset-btn" onclick="setPreset(5)">5分</button>
+  <button class="preset-btn" onclick="setPreset(10)">10分</button>
+  <button class="preset-btn" onclick="setPreset(25)">25分</button>
+  <button class="preset-btn" onclick="setPreset(45)">45分</button>
+</div>
+
+<div class="controls">
+  <button class="ctrl-btn" id="resetBtn" onclick="resetTimer()">↺</button>
+  <button class="ctrl-btn" id="playBtn" onclick="togglePlay()">▶</button>
+</div>
+
+<p class="hint" id="hint">円の上をドラッグ・タップして残り時間を設定</p>
+
+<div id="alarmOverlay">
+  <div class="alarm-box">
+    <div class="alarm-icon">⏰</div>
+    <div class="alarm-msg">時間です！</div>
+    <button id="stopBtn" onclick="stopAlarm()">止める</button>
+  </div>
+</div>
+
+<script>
+/* ── Service Worker 登録 ── */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () =>
+    navigator.serviceWorker.register('./sw.js').catch(() => {})
+  );
+}
+
+(() => {
+  let totalSec = 0, remSec = 0;
+  let running = false, timer = null;
+  let dragging = false;
+  let audioCtx = null, alarmTimer = null;
+
+  const wrap   = document.getElementById('timerWrap');
+  const canvas = document.getElementById('c');
+  const ctx    = canvas.getContext('2d');
+  let DPR = window.devicePixelRatio || 1;
+  let SIZE = 340;
+
+  function initCanvas() {
+    const rect = wrap.getBoundingClientRect();
+    SIZE = rect.width;
+    canvas.width  = SIZE * DPR;
+    canvas.height = SIZE * DPR;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+
+  /* ── Draw ── */
+  function draw() {
+    const s = SIZE, cx = s/2, cy = s/2;
+    const R = s * 0.46, r = s * 0.26;
+    ctx.clearRect(0, 0, s, s);
+
+    const frac   = totalSec > 0 ? remSec / totalSec : 0;
+    const startA = -Math.PI / 2;
+    const endA   = startA + frac * Math.PI * 2;
+
+    /* Track */
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    /* Ticks */
+    for (let i = 0; i < 60; i++) {
+      const a = (i/60)*Math.PI*2 - Math.PI/2;
+      const major = i % 5 === 0;
+      const inner = major ? R - s*0.05 : R - s*0.03;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a)*inner,  cy + Math.sin(a)*inner);
+      ctx.lineTo(cx + Math.cos(a)*(R-2),  cy + Math.sin(a)*(R-2));
+      ctx.strokeStyle = major ? 'rgba(255,255,255,0.38)' : 'rgba(255,255,255,0.12)';
+      ctx.lineWidth = major ? 2 : 1;
+      ctx.stroke();
+    }
+
+    /* Labels */
+    ctx.save();
+    ctx.font = `${s*0.038}px -apple-system, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(255,255,255,0.32)';
+    [15,30,45,60].forEach(m => {
+      const a = (m/60)*Math.PI*2 - Math.PI/2;
+      const lr = R - s*0.11;
+      ctx.fillText(String(m), cx + Math.cos(a)*lr, cy + Math.sin(a)*lr);
+    });
+    ctx.restore();
+
+    /* Sector */
+    if (frac > 0.001) {
+      const grad = ctx.createRadialGradient(cx, cy, r, cx, cy, R);
+      grad.addColorStop(0, '#ff8080');
+      grad.addColorStop(1, '#dc2626');
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, R-2, startA, endA);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      /* Glow on leading edge */
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(endA)*(R-2-(R-r)/2),
+              cy + Math.sin(endA)*(R-2-(R-r)/2),
+              (R-r)/2, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,100,100,0.35)';
+      ctx.fill();
+
+      /* Leading-edge line */
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(endA)*(r+2), cy + Math.sin(endA)*(r+2));
+      ctx.lineTo(cx + Math.cos(endA)*(R-2), cy + Math.sin(endA)*(R-2));
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    /* Donut hole */
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI*2);
+    ctx.fillStyle = '#111827';
+    ctx.fill();
+
+    /* 12-o'clock marker */
+    ctx.beginPath();
+    ctx.moveTo(cx, cy-r); ctx.lineTo(cx, cy-R);
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    /* Center dot */
+    ctx.beginPath();
+    ctx.arc(cx, cy, 5, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fill();
+  }
+
+  /* ── Display ── */
+  function updateDisplay() {
+    const m = Math.floor(remSec/60), s = remSec%60;
+    document.getElementById('timeBig').textContent =
+      `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    const sub = document.getElementById('timeSub');
+    if (!running && remSec===0 && totalSec===0) sub.textContent = '円をドラッグして設定';
+    else if (running) sub.textContent = '実行中';
+    else sub.textContent = remSec===totalSec ? '準備完了' : '一時停止中';
+  }
+
+  /* ── Angle ── */
+  function angleFromXY(cx2, cy2) {
+    const rect = canvas.getBoundingClientRect();
+    const px = cx2 - rect.left - rect.width/2;
+    const py = cy2 - rect.top  - rect.height/2;
+    let a = Math.atan2(py, px) + Math.PI/2;
+    if (a < 0) a += Math.PI*2;
+    return a;
+  }
+  function setFromAngle(a) {
+    const mins = Math.round((a/(Math.PI*2))*60);
+    totalSec = Math.min(Math.max(mins,0),60)*60;
+    remSec = totalSec;
+    updateDisplay(); draw();
+  }
+
+  /* ── Pointer ── */
+  function onDown(e) {
+    if (running) return;
+    dragging = true;
+    const t = e.touches ? e.touches[0] : e;
+    setFromAngle(angleFromXY(t.clientX, t.clientY));
+    document.getElementById('hint').style.display = 'none';
+  }
+  function onMove(e) {
+    if (!dragging || running) return;
+    e.preventDefault();
+    const t = e.touches ? e.touches[0] : e;
+    setFromAngle(angleFromXY(t.clientX, t.clientY));
+  }
+  function onUp() { dragging = false; }
+
+  canvas.addEventListener('mousedown',  onDown);
+  canvas.addEventListener('mousemove',  onMove);
+  canvas.addEventListener('mouseup',    onUp);
+  canvas.addEventListener('touchstart', onDown, {passive:false});
+  canvas.addEventListener('touchmove',  onMove, {passive:false});
+  canvas.addEventListener('touchend',   onUp);
+
+  /* ── Preset ── */
+  window.setPreset = min => {
+    if (running) return;
+    totalSec = min*60; remSec = totalSec;
+    document.getElementById('hint').style.display = 'none';
+    updateDisplay(); draw();
+  };
+
+  /* ── Play/Pause ── */
+  window.togglePlay = () => {
+    if (totalSec === 0) return;
+    if (running) {
+      clearInterval(timer); running = false;
+      document.getElementById('playBtn').textContent = '▶';
+    } else {
+      if (remSec === 0) remSec = totalSec;
+      running = true;
+      document.getElementById('playBtn').textContent = '⏸';
+      timer = setInterval(() => {
+        remSec--;
+        if (remSec <= 0) {
+          remSec = 0; clearInterval(timer); running = false;
+          document.getElementById('playBtn').textContent = '▶';
+          triggerAlarm();
+        }
+        updateDisplay(); draw();
+      }, 1000);
+    }
+    updateDisplay();
+  };
+
+  /* ── Reset ── */
+  window.resetTimer = () => {
+    clearInterval(timer); running = false;
+    totalSec = 0; remSec = 0;
+    document.getElementById('playBtn').textContent = '▶';
+    document.getElementById('hint').style.display = '';
+    updateDisplay(); draw();
+  };
+
+  /* ── Audio ── */
+  function getAC() {
+    if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    return audioCtx;
+  }
+  function beep(freq, dur, vol=0.55, delay=0) {
+    const ac=getAC(), osc=ac.createOscillator(), gain=ac.createGain();
+    osc.connect(gain); gain.connect(ac.destination);
+    osc.type='sine'; osc.frequency.value=freq;
+    const t=ac.currentTime+delay;
+    gain.gain.setValueAtTime(0,t);
+    gain.gain.linearRampToValueAtTime(vol,t+0.01);
+    gain.gain.linearRampToValueAtTime(0,t+dur);
+    osc.start(t); osc.stop(t+dur+0.05);
+  }
+  function playAlarm() {
+    beep(880,0.18,0.6,0);
+    beep(1100,0.18,0.6,0.22);
+    beep(880,0.18,0.6,0.44);
+    beep(1320,0.35,0.6,0.68);
+  }
+  function triggerAlarm() {
+    document.getElementById('alarmOverlay').classList.add('show');
+    playAlarm();
+    alarmTimer = setInterval(playAlarm, 1600);
+  }
+  window.stopAlarm = () => {
+    clearInterval(alarmTimer);
+    document.getElementById('alarmOverlay').classList.remove('show');
+    resetTimer();
+  };
+
+  window.addEventListener('resize', () => { initCanvas(); draw(); });
+  initCanvas(); draw(); updateDisplay();
+})();
+</script>
+</body>
+</html>
