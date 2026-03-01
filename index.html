@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="タイマー" />
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-  <meta name="theme-color" content="#111827" />
+  <meta name="theme-color" content="#111827" id="themeColorMeta" />
 
   <style>
     *, *::before, *::after {
@@ -20,30 +20,93 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    /* ── CSS変数でテーマ管理 ── */
+    :root {
+      --bg:             #111827;
+      --fg:             #ffffff;
+      --fg-muted:       rgba(255,255,255,0.42);
+      --fg-dim:         rgba(255,255,255,0.22);
+      --h1-color:       #9ca3af;
+      --btn-reset-bg:   rgba(255,255,255,0.10);
+      --btn-reset-fg:   rgba(255,255,255,0.70);
+      --preset-bg:      rgba(255,255,255,0.07);
+      --preset-border:  rgba(255,255,255,0.15);
+      --preset-fg:      rgba(255,255,255,0.75);
+      --theme-btn-bg:   rgba(255,255,255,0.10);
+      --theme-btn-fg:   rgba(255,255,255,0.70);
+      --modal-bg:       rgba(17,24,39,0.96);
+      --modal-border:   rgba(255,255,255,0.12);
+      --input-bg:       rgba(255,255,255,0.08);
+      --input-border:   rgba(255,255,255,0.2);
+      --input-fg:       #ffffff;
+      --cancel-bg:      rgba(255,255,255,0.08);
+      --cancel-fg:      rgba(255,255,255,0.7);
+    }
+
+    [data-theme="light"] {
+      --bg:             #f3f4f6;
+      --fg:             #111827;
+      --fg-muted:       rgba(0,0,0,0.50);
+      --fg-dim:         rgba(0,0,0,0.28);
+      --h1-color:       #6b7280;
+      --btn-reset-bg:   rgba(0,0,0,0.08);
+      --btn-reset-fg:   rgba(0,0,0,0.60);
+      --preset-bg:      rgba(0,0,0,0.05);
+      --preset-border:  rgba(0,0,0,0.14);
+      --preset-fg:      rgba(0,0,0,0.65);
+      --theme-btn-bg:   rgba(0,0,0,0.07);
+      --theme-btn-fg:   rgba(0,0,0,0.60);
+      --modal-bg:       rgba(243,244,246,0.98);
+      --modal-border:   rgba(0,0,0,0.12);
+      --input-bg:       rgba(0,0,0,0.05);
+      --input-border:   rgba(0,0,0,0.18);
+      --input-fg:       #111827;
+      --cancel-bg:      rgba(0,0,0,0.06);
+      --cancel-fg:      rgba(0,0,0,0.55);
+    }
+
     body {
-      background: #111827;
-      /* iOS safe area (ノッチ・ホームバー対応) */
+      background: var(--bg);
       padding-top: env(safe-area-inset-top);
       padding-bottom: env(safe-area-inset-bottom);
-      min-height: 100vh;
-      min-height: 100dvh;
+      min-height: 100vh; min-height: 100dvh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Segoe UI', sans-serif;
-      color: #fff;
+      color: var(--fg);
       overflow: hidden;
       user-select: none;
+      transition: background .3s, color .3s;
     }
+
+    /* ── Theme button (top-right) ── */
+    #themeBtn {
+      position: fixed;
+      top: max(16px, env(safe-area-inset-top, 16px));
+      right: 18px;
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: none;
+      background: var(--theme-btn-bg);
+      color: var(--theme-btn-fg);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .2s, transform .1s;
+      z-index: 10;
+    }
+    #themeBtn:active { transform: scale(.9); }
 
     h1 {
       font-size: clamp(16px, 3vw, 24px);
       font-weight: 300;
       letter-spacing: 6px;
-      color: #9ca3af;
+      color: var(--h1-color);
       text-transform: uppercase;
       margin-bottom: clamp(20px, 3.5vh, 44px);
+      transition: color .3s;
     }
 
     /* ── Timer ── */
@@ -64,23 +127,52 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      pointer-events: none;
+      pointer-events: none; /* キャンバスへのドラッグを通す */
     }
+
+    /* タップ可能エリア（停止中のみ） */
+    #timeEditBtn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 20px;
+      border-radius: 16px;
+      transition: background .15s;
+      pointer-events: auto; /* ボタン自体はタップを受け取る */
+    }
+    #timeEditBtn:not([disabled]):active {
+      background: rgba(128,128,128,0.12);
+    }
+    #timeEditBtn[disabled] { cursor: default; pointer-events: none; }
 
     .time-big {
       font-size: clamp(40px, 11vw, 62px);
       font-weight: 200;
       letter-spacing: 3px;
       line-height: 1;
-      text-shadow: 0 2px 16px rgba(0,0,0,.6);
+      color: var(--fg);
+      text-shadow: 0 2px 16px rgba(0,0,0,.25);
+      transition: color .3s;
     }
-
     .time-sub {
       margin-top: 6px;
       font-size: clamp(11px, 2.2vw, 13px);
-      color: rgba(255,255,255,.4);
+      color: var(--fg-muted);
       letter-spacing: 2px;
+      transition: color .3s;
     }
+    /* 編集ヒント（停止中に薄く表示） */
+    .edit-hint {
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--fg-dim);
+      letter-spacing: 1px;
+      transition: opacity .2s, color .3s;
+    }
+    .running .edit-hint { opacity: 0; }
 
     /* ── Presets ── */
     .presets {
@@ -95,16 +187,15 @@
     .preset-btn {
       padding: 8px 18px;
       border-radius: 20px;
-      border: 1px solid rgba(255,255,255,.15);
-      background: rgba(255,255,255,.07);
-      color: rgba(255,255,255,.75);
+      border: 1px solid var(--preset-border);
+      background: var(--preset-bg);
+      color: var(--preset-fg);
       font-size: clamp(12px, 2.4vw, 14px);
       letter-spacing: 1px;
       cursor: pointer;
-      transition: background .15s, transform .1s;
-      backdrop-filter: blur(6px);
+      transition: background .15s, transform .1s, color .3s, border-color .3s;
     }
-    .preset-btn:active { transform: scale(.92); background: rgba(255,255,255,.16); }
+    .preset-btn:active { transform: scale(.92); }
 
     /* ── Controls ── */
     .controls {
@@ -115,11 +206,8 @@
     }
 
     .ctrl-btn {
-      border: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
       border-radius: 50%;
       transition: transform .15s;
     }
@@ -127,11 +215,11 @@
 
     #resetBtn {
       width: 56px; height: 56px;
-      background: rgba(255,255,255,.1);
+      background: var(--btn-reset-bg);
       font-size: 22px;
-      color: rgba(255,255,255,.7);
+      color: var(--btn-reset-fg);
+      transition: background .3s, color .3s;
     }
-
     #playBtn {
       width: 80px; height: 80px;
       background: linear-gradient(145deg, #ef4444, #b91c1c);
@@ -143,44 +231,147 @@
     .hint {
       margin-top: clamp(14px, 2.2vh, 24px);
       font-size: 12px;
-      color: rgba(255,255,255,.22);
+      color: var(--fg-dim);
       letter-spacing: 1.5px;
       text-align: center;
       padding: 0 16px;
+      transition: color .3s;
     }
+
+    /* ── 直接入力モーダル ── */
+    #inputModal {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45);
+      align-items: center; justify-content: center;
+      z-index: 50;
+      backdrop-filter: blur(4px);
+    }
+    #inputModal.show { display: flex; }
+
+    .modal-box {
+      background: var(--modal-bg);
+      border: 1px solid var(--modal-border);
+      border-radius: 24px;
+      padding: 32px 36px;
+      width: min(320px, 88vw);
+      text-align: center;
+      box-shadow: 0 24px 60px rgba(0,0,0,.35);
+      transition: background .3s, border-color .3s;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 2px;
+      color: var(--fg);
+      margin-bottom: 20px;
+      transition: color .3s;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .num-input {
+      width: 90px;
+      padding: 12px 10px;
+      font-size: 32px;
+      font-weight: 200;
+      text-align: center;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 14px;
+      color: var(--input-fg);
+      outline: none;
+      transition: background .3s, border-color .3s, color .3s;
+      -webkit-appearance: none;
+    }
+    .num-input:focus { border-color: #ef4444; }
+
+    .input-sep {
+      font-size: 28px;
+      font-weight: 200;
+      color: var(--fg-muted);
+    }
+
+    .input-labels {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .input-label {
+      width: 90px;
+      font-size: 11px;
+      color: var(--fg-dim);
+      letter-spacing: 1px;
+      text-align: center;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .modal-cancel {
+      flex: 1;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      background: var(--cancel-bg);
+      color: var(--cancel-fg);
+      font-size: 15px;
+      cursor: pointer;
+      transition: background .15s, transform .1s;
+    }
+    .modal-cancel:active { transform: scale(.95); }
+
+    .modal-ok {
+      flex: 1;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      background: #ef4444;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .1s;
+    }
+    .modal-ok:active { transform: scale(.95); }
 
     /* ── Alarm ── */
     #alarmOverlay {
       display: none;
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background: rgba(239,68,68,.18);
-      align-items: center;
-      justify-content: center;
-      animation: flashBg 0.85s ease-in-out infinite;
+      align-items: center; justify-content: center;
+      animation: flashBg .85s ease-in-out infinite;
       z-index: 100;
     }
     #alarmOverlay.show { display: flex; }
 
     @keyframes flashBg {
-      0%,100% { background: rgba(239,68,68,.1); }
+      0%,100% { background: rgba(239,68,68,.10); }
       50%      { background: rgba(239,68,68,.32); }
     }
 
     .alarm-box {
       text-align: center;
       padding: 44px 52px;
-      background: rgba(17,24,39,.9);
+      background: var(--modal-bg);
       border-radius: 28px;
       border: 1px solid rgba(239,68,68,.4);
       backdrop-filter: blur(20px);
       margin: 0 24px;
     }
 
-    .alarm-icon {
-      font-size: 68px;
-      animation: bounce .75s ease-in-out infinite;
-    }
+    .alarm-icon { font-size: 68px; animation: bounce .75s ease-in-out infinite; }
     @keyframes bounce {
       0%,100% { transform: translateY(0); }
       50%      { transform: translateY(-10px); }
@@ -191,6 +382,7 @@
       font-size: 26px;
       font-weight: 300;
       letter-spacing: 3px;
+      color: var(--fg);
     }
 
     #stopBtn {
@@ -210,21 +402,27 @@
 </head>
 <body>
 
+<!-- テーマ切替ボタン -->
+<button id="themeBtn" onclick="toggleTheme()" title="テーマ切替">🌙</button>
+
 <h1>タイマー</h1>
 
 <div class="timer-wrap" id="timerWrap">
   <canvas id="c"></canvas>
   <div class="overlay-time">
-    <div class="time-big" id="timeBig">00:00</div>
-    <div class="time-sub" id="timeSub">円をドラッグして設定</div>
+    <button id="timeEditBtn" onclick="openInput()" title="時間を直接入力">
+      <div class="time-big" id="timeBig">00:00</div>
+      <div class="time-sub" id="timeSub">円をドラッグして設定</div>
+      <div class="edit-hint" id="editHint">タップして入力</div>
+    </button>
   </div>
 </div>
 
 <div class="presets">
+  <button class="preset-btn" onclick="setPreset(1)">1分</button>
   <button class="preset-btn" onclick="setPreset(5)">5分</button>
   <button class="preset-btn" onclick="setPreset(10)">10分</button>
   <button class="preset-btn" onclick="setPreset(25)">25分</button>
-  <button class="preset-btn" onclick="setPreset(45)">45分</button>
 </div>
 
 <div class="controls">
@@ -232,8 +430,30 @@
   <button class="ctrl-btn" id="playBtn" onclick="togglePlay()">▶</button>
 </div>
 
-<p class="hint" id="hint">円の上をドラッグ・タップして残り時間を設定</p>
+<p class="hint" id="hint">円をドラッグ・タップして残り時間を設定</p>
 
+<!-- 直接入力モーダル -->
+<div id="inputModal">
+  <div class="modal-box">
+    <div class="modal-title">時間を入力</div>
+    <div class="input-row">
+      <input class="num-input" id="minInput"  type="number" min="0" max="60" placeholder="00" inputmode="numeric" />
+      <span class="input-sep">:</span>
+      <input class="num-input" id="secInput"  type="number" min="0" max="59" placeholder="00" inputmode="numeric" />
+    </div>
+    <div class="input-labels">
+      <div class="input-label">分</div>
+      <div class="input-label" style="visibility:hidden">:</div>
+      <div class="input-label">秒</div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeInput()">キャンセル</button>
+      <button class="modal-ok"     onclick="confirmInput()">決定</button>
+    </div>
+  </div>
+</div>
+
+<!-- アラーム -->
 <div id="alarmOverlay">
   <div class="alarm-box">
     <div class="alarm-icon">⏰</div>
@@ -243,7 +463,7 @@
 </div>
 
 <script>
-/* ── Service Worker 登録 ── */
+/* ── Service Worker ── */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () =>
     navigator.serviceWorker.register('./sw.js').catch(() => {})
@@ -251,11 +471,29 @@ if ('serviceWorker' in navigator) {
 }
 
 (() => {
+  /* ── State ── */
   let totalSec = 0, remSec = 0;
   let running = false, timer = null;
   let dragging = false;
   let audioCtx = null, alarmTimer = null;
+  let isLight = false;
 
+  /* ── Theme init (localStorage) ── */
+  const savedTheme = localStorage.getItem('timer-theme');
+  if (savedTheme === 'light') applyTheme(true, false);
+
+  function applyTheme(light, save = true) {
+    isLight = light;
+    document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
+    document.getElementById('themeBtn').textContent = light ? '🌙' : '☀️';
+    document.getElementById('themeColorMeta').content = light ? '#f3f4f6' : '#111827';
+    if (save) localStorage.setItem('timer-theme', light ? 'light' : 'dark');
+    draw();
+  }
+
+  window.toggleTheme = () => applyTheme(!isLight);
+
+  /* ── Canvas ── */
   const wrap   = document.getElementById('timerWrap');
   const canvas = document.getElementById('c');
   const ctx    = canvas.getContext('2d');
@@ -276,16 +514,22 @@ if ('serviceWorker' in navigator) {
     const R = s * 0.46, r = s * 0.26;
     ctx.clearRect(0, 0, s, s);
 
-    const frac   = totalSec > 0 ? remSec / totalSec : 0;
-    const startA = -Math.PI / 2;
-    const endA   = startA + frac * Math.PI * 2;
+    /* テーマカラー */
+    const bgColor     = isLight ? '#f3f4f6' : '#111827';
+    const trackFill   = isLight ? 'rgba(0,0,0,0.04)'    : 'rgba(255,255,255,0.04)';
+    const trackStroke = isLight ? 'rgba(0,0,0,0.10)'    : 'rgba(255,255,255,0.08)';
+    const tickMajor   = isLight ? 'rgba(0,0,0,0.38)'    : 'rgba(255,255,255,0.38)';
+    const tickMinor   = isLight ? 'rgba(0,0,0,0.14)'    : 'rgba(255,255,255,0.12)';
+    const labelColor  = isLight ? 'rgba(0,0,0,0.35)'    : 'rgba(255,255,255,0.32)';
+    const markerColor = isLight ? 'rgba(0,0,0,0.45)'    : 'rgba(255,255,255,0.55)';
+    const edgeColor   = isLight ? 'rgba(80,80,80,0.9)'  : '#ffffff';
 
     /* Track */
     ctx.beginPath();
     ctx.arc(cx, cy, R, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.fillStyle = trackFill;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.strokeStyle = trackStroke;
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
@@ -295,9 +539,9 @@ if ('serviceWorker' in navigator) {
       const major = i % 5 === 0;
       const inner = major ? R - s*0.05 : R - s*0.03;
       ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(a)*inner,  cy + Math.sin(a)*inner);
-      ctx.lineTo(cx + Math.cos(a)*(R-2),  cy + Math.sin(a)*(R-2));
-      ctx.strokeStyle = major ? 'rgba(255,255,255,0.38)' : 'rgba(255,255,255,0.12)';
+      ctx.moveTo(cx + Math.cos(a)*inner, cy + Math.sin(a)*inner);
+      ctx.lineTo(cx + Math.cos(a)*(R-2), cy + Math.sin(a)*(R-2));
+      ctx.strokeStyle = major ? tickMajor : tickMinor;
       ctx.lineWidth = major ? 2 : 1;
       ctx.stroke();
     }
@@ -306,15 +550,18 @@ if ('serviceWorker' in navigator) {
     ctx.save();
     ctx.font = `${s*0.038}px -apple-system, sans-serif`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(255,255,255,0.32)';
+    ctx.fillStyle = labelColor;
     [15,30,45,60].forEach(m => {
       const a = (m/60)*Math.PI*2 - Math.PI/2;
-      const lr = R - s*0.11;
-      ctx.fillText(String(m), cx + Math.cos(a)*lr, cy + Math.sin(a)*lr);
+      ctx.fillText(String(m), cx + Math.cos(a)*(R - s*0.11), cy + Math.sin(a)*(R - s*0.11));
     });
     ctx.restore();
 
     /* Sector */
+    const frac   = totalSec > 0 ? remSec / totalSec : 0;
+    const startA = -Math.PI / 2;
+    const endA   = startA + frac * Math.PI * 2;
+
     if (frac > 0.001) {
       const grad = ctx.createRadialGradient(cx, cy, r, cx, cy, R);
       grad.addColorStop(0, '#ff8080');
@@ -326,38 +573,38 @@ if ('serviceWorker' in navigator) {
       ctx.fillStyle = grad;
       ctx.fill();
 
-      /* Glow on leading edge */
+      /* Glow */
       ctx.beginPath();
       ctx.arc(cx + Math.cos(endA)*(R-2-(R-r)/2),
               cy + Math.sin(endA)*(R-2-(R-r)/2),
               (R-r)/2, 0, Math.PI*2);
-      ctx.fillStyle = 'rgba(255,100,100,0.35)';
+      ctx.fillStyle = 'rgba(255,100,100,0.32)';
       ctx.fill();
 
-      /* Leading-edge line */
+      /* Edge line */
       ctx.beginPath();
       ctx.moveTo(cx + Math.cos(endA)*(r+2), cy + Math.sin(endA)*(r+2));
       ctx.lineTo(cx + Math.cos(endA)*(R-2), cy + Math.sin(endA)*(R-2));
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      ctx.strokeStyle = edgeColor; ctx.lineWidth = 3; ctx.lineCap = 'round';
       ctx.stroke();
     }
 
     /* Donut hole */
     ctx.beginPath();
     ctx.arc(cx, cy, r, 0, Math.PI*2);
-    ctx.fillStyle = '#111827';
+    ctx.fillStyle = bgColor;
     ctx.fill();
 
     /* 12-o'clock marker */
     ctx.beginPath();
     ctx.moveTo(cx, cy-r); ctx.lineTo(cx, cy-R);
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 2.5;
+    ctx.strokeStyle = markerColor; ctx.lineWidth = 2.5;
     ctx.stroke();
 
     /* Center dot */
     ctx.beginPath();
     ctx.arc(cx, cy, 5, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.fillStyle = isLight ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.4)';
     ctx.fill();
   }
 
@@ -368,11 +615,15 @@ if ('serviceWorker' in navigator) {
       `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
     const sub = document.getElementById('timeSub');
     if (!running && remSec===0 && totalSec===0) sub.textContent = '円をドラッグして設定';
-    else if (running) sub.textContent = '実行中';
-    else sub.textContent = remSec===totalSec ? '準備完了' : '一時停止中';
+    else if (running)                           sub.textContent = '実行中';
+    else sub.textContent = remSec===totalSec    ? '準備完了' : '一時停止中';
+
+    /* 実行中は編集ボタン無効 */
+    document.getElementById('timeEditBtn').disabled = running;
+    document.querySelector('.overlay-time').classList.toggle('running', running);
   }
 
-  /* ── Angle ── */
+  /* ── Angle → Time ── */
   function angleFromXY(cx2, cy2) {
     const rect = canvas.getBoundingClientRect();
     const px = cx2 - rect.left - rect.width/2;
@@ -391,8 +642,15 @@ if ('serviceWorker' in navigator) {
   /* ── Pointer ── */
   function onDown(e) {
     if (running) return;
-    dragging = true;
+    /* 中央の編集ボタン領域ならスキップ（クリックイベントに任せる）*/
+    const rect = canvas.getBoundingClientRect();
     const t = e.touches ? e.touches[0] : e;
+    const dx = t.clientX - rect.left - rect.width/2;
+    const dy = t.clientY - rect.top  - rect.height/2;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const r = rect.width * 0.26;
+    if (dist < r) return; /* 内円タップは入力モーダルへ */
+    dragging = true;
     setFromAngle(angleFromXY(t.clientX, t.clientY));
     document.getElementById('hint').style.display = 'none';
   }
@@ -410,6 +668,43 @@ if ('serviceWorker' in navigator) {
   canvas.addEventListener('touchstart', onDown, {passive:false});
   canvas.addEventListener('touchmove',  onMove, {passive:false});
   canvas.addEventListener('touchend',   onUp);
+
+  /* ── 直接入力モーダル ── */
+  window.openInput = () => {
+    if (running) return;
+    const m = Math.floor(remSec/60);
+    const s = remSec % 60;
+    document.getElementById('minInput').value = m || '';
+    document.getElementById('secInput').value = s || '';
+    document.getElementById('inputModal').classList.add('show');
+    /* フォーカスを少し遅らせる（iOS キーボード対応）*/
+    setTimeout(() => document.getElementById('minInput').focus(), 80);
+  };
+
+  window.closeInput = () => {
+    document.getElementById('inputModal').classList.remove('show');
+  };
+
+  window.confirmInput = () => {
+    const m = parseInt(document.getElementById('minInput').value) || 0;
+    const s = parseInt(document.getElementById('secInput').value) || 0;
+    const total = Math.min(m, 60) * 60 + Math.min(s, 59);
+    if (total > 0) {
+      totalSec = total; remSec = total;
+      document.getElementById('hint').style.display = 'none';
+      updateDisplay(); draw();
+    }
+    closeInput();
+  };
+
+  /* Enterキーで確定 */
+  document.getElementById('minInput').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('secInput').focus(); });
+  document.getElementById('secInput').addEventListener('keydown', e => { if (e.key==='Enter') window.confirmInput(); });
+
+  /* モーダル背景タップで閉じる */
+  document.getElementById('inputModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('inputModal')) closeInput();
+  });
 
   /* ── Preset ── */
   window.setPreset = min => {
@@ -467,10 +762,8 @@ if ('serviceWorker' in navigator) {
     osc.start(t); osc.stop(t+dur+0.05);
   }
   function playAlarm() {
-    beep(880,0.18,0.6,0);
-    beep(1100,0.18,0.6,0.22);
-    beep(880,0.18,0.6,0.44);
-    beep(1320,0.35,0.6,0.68);
+    beep(880,0.18,0.6,0); beep(1100,0.18,0.6,0.22);
+    beep(880,0.18,0.6,0.44); beep(1320,0.35,0.6,0.68);
   }
   function triggerAlarm() {
     document.getElementById('alarmOverlay').classList.add('show');
